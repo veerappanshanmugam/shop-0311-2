@@ -9,7 +9,7 @@ This script supports two modes:
 1. SRC Validation: Tests endpoints and captures responses (no expected_response)
 2. DST Contract Validation: Tests endpoints and validates responses match expected (has expected_response)
 
-Generated at: 2026-03-11T18:33:30.765075+00:00
+Generated at: 2026-03-11T18:38:12.629330+00:00
 Project: shop-0311-2
 Milestone: 1
 """
@@ -123,7 +123,7 @@ TEST_CASES: list[dict[str, Any]] = resolve_env_placeholders(
                 "name": "No Email User"
             }
         },
-        "expected_status": 400,
+        "expected_status": 422,
         "cleanup": null
     },
     {
@@ -140,13 +140,13 @@ TEST_CASES: list[dict[str, Any]] = resolve_env_placeholders(
                 "email": "noname@example.com"
             }
         },
-        "expected_status": 400,
+        "expected_status": 422,
         "cleanup": null
     },
     {
         "name": "get_user_by_id_happy_path",
         "category": "HAPPY_PATH",
-        "endpoint": "/users/{userId}",
+        "endpoint": "/users/{user_id}",
         "method": "GET",
         "description": "Create a user then retrieve it by ID",
         "setup": {
@@ -160,7 +160,7 @@ TEST_CASES: list[dict[str, Any]] = resolve_env_placeholders(
         },
         "request_data": {
             "path": {
-                "userId": "$setup_id"
+                "user_id": "$setup_id"
             },
             "query": {},
             "body": null
@@ -171,13 +171,13 @@ TEST_CASES: list[dict[str, Any]] = resolve_env_placeholders(
     {
         "name": "get_user_not_found",
         "category": "NOT_FOUND",
-        "endpoint": "/users/{userId}",
+        "endpoint": "/users/{user_id}",
         "method": "GET",
         "description": "Attempt to retrieve a user with a non-existent ID",
         "setup": null,
         "request_data": {
             "path": {
-                "userId": 999999
+                "user_id": 999999
             },
             "query": {},
             "body": null
@@ -204,8 +204,8 @@ TEST_CASES: list[dict[str, Any]] = resolve_env_placeholders(
 )
 
 # Base URL for API requests (from app discovery, includes host:port)
-BASE_URL = os.path.expandvars("")
-HEALTH_CHECK_ENDPOINT = os.path.expandvars("")
+BASE_URL = os.path.expandvars("http://localhost:8000")
+HEALTH_CHECK_ENDPOINT = os.path.expandvars("/")
 REQUEST_TIMEOUT = 30
 HEALTH_CHECK_URL = f"{BASE_URL.rstrip('/')}/{HEALTH_CHECK_ENDPOINT.lstrip('/')}"
 # Per-endpoint routing table for microservices DST
