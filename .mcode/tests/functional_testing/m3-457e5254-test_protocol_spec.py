@@ -9,7 +9,7 @@ This script supports two modes:
 1. SRC Validation: Tests endpoints and captures responses (no expected_response)
 2. DST Contract Validation: Tests endpoints and validates responses match expected (has expected_response)
 
-Generated at: 2026-03-11T18:59:54.201334+00:00
+Generated at: 2026-03-11T19:07:47.283138+00:00
 Project: shop-0311-2
 Milestone: 3
 """
@@ -51,58 +51,121 @@ def resolve_env_placeholders(obj: Any) -> Any:
 TEST_CASES: list[dict[str, Any]] = resolve_env_placeholders(
     json.loads(r'''[
     {
-        "name": "create_order_happy_path",
-        "category": "HAPPY_PATH",
-        "endpoint": "/orders",
+        "name": "setup_user_for_orders",
+        "category": "SETUP",
+        "endpoint": "/users",
         "method": "POST",
-        "description": "Create user, product with inventory, then place an order successfully",
-        "setup": {
-            "steps": [
-                {
-                    "id": "user",
-                    "endpoint": "/users",
-                    "method": "POST",
-                    "body": {
-                        "email": "order-test-hp@example.com",
-                        "name": "Order Test User"
-                    },
-                    "extract_id_from": "id"
-                },
-                {
-                    "id": "product",
-                    "endpoint": "/products",
-                    "method": "POST",
-                    "body": {
-                        "name": "Widget A",
-                        "description": "A test widget",
-                        "price": 29.99
-                    },
-                    "extract_id_from": "id"
-                },
-                {
-                    "id": "inventory",
-                    "endpoint": "/inventory/$product_id",
-                    "method": "PUT",
-                    "body": {
-                        "quantity": 100
-                    }
-                }
-            ]
-        },
+        "description": "Create a test user for order tests",
         "request_data": {
             "path": {},
             "query": {},
             "body": {
-                "user_id": "$user_id",
+                "email": "order-m3-user-a7x9@test.com",
+                "name": "Order Test User"
+            }
+        },
+        "expected_status": 200,
+        "store": {
+            "test_user_id": "id"
+        }
+    },
+    {
+        "name": "setup_product_for_orders",
+        "category": "SETUP",
+        "endpoint": "/products",
+        "method": "POST",
+        "description": "Create a test product for order tests (auto-initializes inventory with quantity=0)",
+        "request_data": {
+            "path": {},
+            "query": {},
+            "body": {
+                "name": "Order Test Widget",
+                "description": "A test widget",
+                "price": 29.99
+            }
+        },
+        "expected_status": 200,
+        "store": {
+            "test_product_id": "id"
+        }
+    },
+    {
+        "name": "setup_inventory_for_orders",
+        "category": "SETUP",
+        "endpoint": "/inventory/{productId}",
+        "method": "PUT",
+        "description": "Set inventory quantity for the test product to 100",
+        "request_data": {
+            "path": {
+                "productId": "$stored.test_product_id"
+            },
+            "query": {},
+            "body": {
+                "quantity": 100
+            }
+        },
+        "expected_status": 200
+    },
+    {
+        "name": "setup_scarce_product",
+        "category": "SETUP",
+        "endpoint": "/products",
+        "method": "POST",
+        "description": "Create a product with limited inventory for insufficient inventory test",
+        "request_data": {
+            "path": {},
+            "query": {},
+            "body": {
+                "name": "Scarce Test Item",
+                "description": "Low stock item",
+                "price": 49.99
+            }
+        },
+        "expected_status": 200,
+        "store": {
+            "scarce_product_id": "id"
+        }
+    },
+    {
+        "name": "setup_scarce_inventory",
+        "category": "SETUP",
+        "endpoint": "/inventory/{productId}",
+        "method": "PUT",
+        "description": "Set limited inventory (quantity=3) for the scarce product",
+        "request_data": {
+            "path": {
+                "productId": "$stored.scarce_product_id"
+            },
+            "query": {},
+            "body": {
+                "quantity": 3
+            }
+        },
+        "expected_status": 200
+    },
+    {
+        "name": "create_order_happy_path",
+        "category": "HAPPY_PATH",
+        "endpoint": "/orders",
+        "method": "POST",
+        "description": "Create an order successfully with valid user, product, and sufficient inventory",
+        "request_data": {
+            "path": {},
+            "query": {},
+            "body": {
+                "user_id": "$stored.test_user_id",
                 "items": [
                     {
-                        "product_id": "$product_id",
+                        "product_id": "$stored.test_product_id",
                         "quantity": 2
                     }
                 ]
             }
         },
-        "expected_status": 200
+        "expected_status": 200,
+        "store": {
+            "test_order_id": "id"
+        }
     },
     {
         "name": "create_order_user_not_found",
@@ -130,26 +193,12 @@ TEST_CASES: list[dict[str, Any]] = resolve_env_placeholders(
         "category": "NOT_FOUND",
         "endpoint": "/orders",
         "method": "POST",
-        "description": "Create a user then attempt to order a non-existent product, expect 404",
-        "setup": {
-            "steps": [
-                {
-                    "id": "user",
-                    "endpoint": "/users",
-                    "method": "POST",
-                    "body": {
-                        "email": "order-test-pnf@example.com",
-                        "name": "Product NF User"
-                    },
-                    "extract_id_from": "id"
-                }
-            ]
-        },
+        "description": "Attempt to order a non-existent product with a valid user, expect 404",
         "request_data": {
             "path": {},
             "query": {},
             "body": {
-                "user_id": "$user_id",
+                "user_id": "$stored.test_user_id",
                 "items": [
                     {
                         "product_id": 999999,
@@ -165,48 +214,15 @@ TEST_CASES: list[dict[str, Any]] = resolve_env_placeholders(
         "category": "BOUNDARY",
         "endpoint": "/orders",
         "method": "POST",
-        "description": "Create user and product with limited inventory, attempt to order more than available, expect 400",
-        "setup": {
-            "steps": [
-                {
-                    "id": "user",
-                    "endpoint": "/users",
-                    "method": "POST",
-                    "body": {
-                        "email": "order-test-inv@example.com",
-                        "name": "Inventory Test User"
-                    },
-                    "extract_id_from": "id"
-                },
-                {
-                    "id": "product",
-                    "endpoint": "/products",
-                    "method": "POST",
-                    "body": {
-                        "name": "Scarce Item",
-                        "description": "Low stock item",
-                        "price": 49.99
-                    },
-                    "extract_id_from": "id"
-                },
-                {
-                    "id": "inventory",
-                    "endpoint": "/inventory/$product_id",
-                    "method": "PUT",
-                    "body": {
-                        "quantity": 3
-                    }
-                }
-            ]
-        },
+        "description": "Attempt to order more than available inventory (10 units from 3 available), expect 400",
         "request_data": {
             "path": {},
             "query": {},
             "body": {
-                "user_id": "$user_id",
+                "user_id": "$stored.test_user_id",
                 "items": [
                     {
-                        "product_id": "$product_id",
+                        "product_id": "$stored.scarce_product_id",
                         "quantity": 10
                     }
                 ]
@@ -219,58 +235,10 @@ TEST_CASES: list[dict[str, Any]] = resolve_env_placeholders(
         "category": "HAPPY_PATH",
         "endpoint": "/orders/{orderId}",
         "method": "GET",
-        "description": "Create a full order then retrieve it by ID, verify OrderResponse with user_name and items",
-        "setup": {
-            "steps": [
-                {
-                    "id": "user",
-                    "endpoint": "/users",
-                    "method": "POST",
-                    "body": {
-                        "email": "order-get-hp@example.com",
-                        "name": "Get Order User"
-                    },
-                    "extract_id_from": "id"
-                },
-                {
-                    "id": "product",
-                    "endpoint": "/products",
-                    "method": "POST",
-                    "body": {
-                        "name": "Gadget B",
-                        "description": "A test gadget",
-                        "price": 15.5
-                    },
-                    "extract_id_from": "id"
-                },
-                {
-                    "id": "inventory",
-                    "endpoint": "/inventory/$product_id",
-                    "method": "PUT",
-                    "body": {
-                        "quantity": 50
-                    }
-                },
-                {
-                    "id": "order",
-                    "endpoint": "/orders",
-                    "method": "POST",
-                    "body": {
-                        "user_id": "$user_id",
-                        "items": [
-                            {
-                                "product_id": "$product_id",
-                                "quantity": 3
-                            }
-                        ]
-                    },
-                    "extract_id_from": "id"
-                }
-            ]
-        },
+        "description": "Retrieve an existing order by ID, verify OrderResponse with user_name and items",
         "request_data": {
             "path": {
-                "orderId": "$order_id"
+                "orderId": "$stored.test_order_id"
             },
             "query": {},
             "body": null
@@ -310,55 +278,7 @@ TEST_CASES: list[dict[str, Any]] = resolve_env_placeholders(
         "category": "HAPPY_PATH",
         "endpoint": "/orders",
         "method": "GET",
-        "description": "Create an order then list all orders, verify the created order appears in the list as a flat entity",
-        "setup": {
-            "steps": [
-                {
-                    "id": "user",
-                    "endpoint": "/users",
-                    "method": "POST",
-                    "body": {
-                        "email": "order-list-hp@example.com",
-                        "name": "List Order User"
-                    },
-                    "extract_id_from": "id"
-                },
-                {
-                    "id": "product",
-                    "endpoint": "/products",
-                    "method": "POST",
-                    "body": {
-                        "name": "List Test Product",
-                        "description": "For list test",
-                        "price": 9.99
-                    },
-                    "extract_id_from": "id"
-                },
-                {
-                    "id": "inventory",
-                    "endpoint": "/inventory/$product_id",
-                    "method": "PUT",
-                    "body": {
-                        "quantity": 20
-                    }
-                },
-                {
-                    "id": "order",
-                    "endpoint": "/orders",
-                    "method": "POST",
-                    "body": {
-                        "user_id": "$user_id",
-                        "items": [
-                            {
-                                "product_id": "$product_id",
-                                "quantity": 1
-                            }
-                        ]
-                    },
-                    "extract_id_from": "id"
-                }
-            ]
-        },
+        "description": "List orders after creation, verify the response is an array containing at least the created order",
         "request_data": {
             "path": {},
             "query": {},
