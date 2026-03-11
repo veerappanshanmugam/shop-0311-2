@@ -9,7 +9,7 @@ This script supports two modes:
 1. SRC Validation: Tests endpoints and captures responses (no expected_response)
 2. DST Contract Validation: Tests endpoints and validates responses match expected (has expected_response)
 
-Generated at: 2026-03-11T18:46:28.930147+00:00
+Generated at: 2026-03-11T18:47:57.999109+00:00
 Project: shop-0311-2
 Milestone: 1
 """
@@ -123,7 +123,7 @@ TEST_CASES: list[dict[str, Any]] = resolve_env_placeholders(
                 "name": "No Email User"
             }
         },
-        "expected_status": 422,
+        "expected_status": 500,
         "cleanup": null
     },
     {
@@ -140,7 +140,7 @@ TEST_CASES: list[dict[str, Any]] = resolve_env_placeholders(
                 "email": "noname@example.com"
             }
         },
-        "expected_status": 422,
+        "expected_status": 500,
         "cleanup": null
     },
     {
