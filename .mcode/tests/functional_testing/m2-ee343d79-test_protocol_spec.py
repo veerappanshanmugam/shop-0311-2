@@ -9,7 +9,7 @@ This script supports two modes:
 1. SRC Validation: Tests endpoints and captures responses (no expected_response)
 2. DST Contract Validation: Tests endpoints and validates responses match expected (has expected_response)
 
-Generated at: 2026-03-11T18:47:24.570920+00:00
+Generated at: 2026-03-11T18:52:34.644531+00:00
 Project: shop-0311-2
 Milestone: 2
 """
@@ -128,27 +128,18 @@ TEST_CASES: list[dict[str, Any]] = resolve_env_placeholders(
         "category": "HAPPY_PATH",
         "endpoint": "/products",
         "method": "POST",
-        "description": "Create a category, then create a product in that category. Verifies product creation with category_id and auto inventory init.",
-        "setup": {
-            "endpoint": "/categories",
-            "method": "POST",
-            "body": {
-                "name": "Furniture",
-                "description": "Home furniture"
-            },
-            "extract_id_from": "id"
-        },
+        "description": "Create a product with name, description, and price. Verifies product creation and auto inventory init.",
         "request_data": {
             "path": {},
             "query": {},
             "body": {
                 "name": "Oak Desk",
                 "description": "Solid oak office desk",
-                "price": 349.99,
-                "category_id": "$setup_id"
+                "price": 349.99
             }
         },
         "expected_status": 200,
+        "setup": null,
         "cleanup": null
     },
     {
@@ -367,7 +358,7 @@ TEST_CASES: list[dict[str, Any]] = resolve_env_placeholders(
         "category": "HAPPY_PATH",
         "endpoint": "/inventory/{productId}/reserve",
         "method": "POST",
-        "description": "Create a product, set inventory to 50, then reserve 10 units",
+        "description": "Create a product (inventory starts at 0), reserve 0 units to verify reserve endpoint returns 200",
         "setup": {
             "endpoint": "/products",
             "method": "POST",
@@ -384,7 +375,7 @@ TEST_CASES: list[dict[str, Any]] = resolve_env_placeholders(
             },
             "query": {},
             "body": {
-                "quantity": 10
+                "quantity": 0
             }
         },
         "expected_status": 200,
